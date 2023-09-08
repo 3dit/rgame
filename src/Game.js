@@ -97,6 +97,13 @@ const Game = () => {
 
         const updateFrame = () => {
 
+            game.actors.forEach((subjector) => {
+                game.actors.forEach((subjected) => {
+                    if(subjected.state.id != subjector.state.id) {
+                        subjector.preInteraction && subjector.preInteraction(subjected);
+                    }
+                });
+            });
             game.actors.forEach((o, i, a) => {
                 if(game.keyEvents.length) o.handleKeyEvents(game.keyEvents);
                 o.step(game);

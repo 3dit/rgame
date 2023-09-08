@@ -14,6 +14,8 @@ const lineData = [
 function ship({ id, name, x, y, xv, yv, a, av }) {
     this.x = x;
     this.y = y;
+    let first = false;
+
     const state = { ...arguments[0], t: 0, tv: 0, physform: true };
 
     state.pro_grade_hold = false;
@@ -41,8 +43,8 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
             state.t = settings.ship.thrust;
             state.tv = 0;
         }
-        state.xv += Math.sin(state.a * dtor) * state.t;
-        state.yv -= Math.cos(state.a * dtor) * state.t;
+        state.xv += Math.sin(state.a * dtor) * state.t * .5;
+        state.yv -= Math.cos(state.a * dtor) * state.t * .5;
 
         if (state.pro_grade_hold || state.retro_grade_hold) {
             const angle = compute_avec();

@@ -1,4 +1,6 @@
 import { settings } from "./config";
+import { core } from "./core";
+
 
 const dtor = Math.PI / 180.0;
 
@@ -29,12 +31,18 @@ function planet({ id, name, x, y, xv, yv, a, av }) {
         // if (game.ship.y < 0) game.ship.y += settings.display.height;
     }
     const preInteraction = (actor) => {
-        if(actor.name === "ship") {
-            const deltax = state.x - actor.state.x;
-            const deltay = state.y - actor.state.y;
-            const ga = Math.atan2( deltay, deltax );
-            //const force = 
-            //actor.state.
+        if(actor.state.name === "ship") {
+            let gvec = core.gravityVector( { x: state.x, y: state.y}, { x:actor.state.x, y:actor.state.y }, settings.planet.grav);
+            actor.state.xv += gvec.x;
+            actor.state.yv += gvec.y;
+            // console.log('shgi');
+            // const xdelta = state.x - actor.state.x;
+            // const ydelta = state.y - actor.state.y;
+            // const distance = Math.sqrt(Math.pow(xdelta, 2) + Math.pow(ydelta, 2));
+            // const ga = Math.atan2( ydelta, xdelta );
+            // const dc = 900 / (distance < 0.4 ? 0.4 : distance);
+            // actor.state.xv += Math.cos(ga) * (settings.planet.grav * dc);
+            // actor.state.yv += Math.cos(ga) * (settings.planet.grav * dc);
         }
     }
     const render = (draw) => {
@@ -46,7 +54,8 @@ function planet({ id, name, x, y, xv, yv, a, av }) {
         handleKeyEvents: (keyEvents) => {
         },
         render: render,
-        step: step
+        step: step,
+        preInteraction: preInteraction
     }
 }
 
