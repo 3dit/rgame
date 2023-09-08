@@ -28,6 +28,15 @@ function planet({ id, name, x, y, xv, yv, a, av }) {
         // if (game.ship.y > settings.display.height) game.ship.y -= settings.display.height;
         // if (game.ship.y < 0) game.ship.y += settings.display.height;
     }
+    const preInteraction = (actor) => {
+        if(actor.name === "ship") {
+            const deltax = state.x - actor.state.x;
+            const deltay = state.y - actor.state.y;
+            const ga = Math.atan2( deltay, deltax );
+            //const force = 
+            //actor.state.
+        }
+    }
     const render = (draw) => {
         draw.svg.select('#pl1').remove();
         draw.drawCircle('pl1', { x: state.x, y: state.y}, 15.0,2.0, '#d33');
