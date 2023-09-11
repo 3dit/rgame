@@ -1,5 +1,5 @@
 import { settings } from "./config";
-import drawLib from "./drawLib";
+import * as d3 from 'd3';
 
 const dtor = Math.PI / 180.0;
 
@@ -7,15 +7,15 @@ const size = 15;
 const lineData = [
     { x1: 0, y1: -size, x2: -size / 2, y2: size / 2 },
     { x1: -size / 2, y1: size / 2, x2: size / 2, y2: size / 2 },
-    { x1: size / 2, y1: size / 2, x2: 0, y2: -size },
-    { x1: 0, y1: 0, x2: 0, y2: 30.0 }
+    { x1: size / 2, y1: size / 2, x2: 0, y2: -size }
 ];
 
-function ship({ id, name, x, y, xv, yv, a, av }) {
-    this.x = x;
-    this.y = y;
-    let first = false;
+let shipGroup = null;
+let flameGroup = null;
+let shipContainer = null;
 
+function ship({ id, name, x, y, xv, yv, a, av }) {
+    let first = true;
     const state = { ...arguments[0], t: 0, tv: 0, physform: true };
 
     state.pro_grade_hold = false;
@@ -36,7 +36,6 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
 
     const step = (game) => {
         //if (dbg) debugger;
-
         state.a += state.av;
         state.t += state.tv;
         if (state.t > settings.ship.thrust) {
@@ -76,7 +75,7 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
             const deltay = settings.star.ypos - state.y;
             const angle_rad = Math.atan2(deltay, deltax);
             state.a = (angle_rad / dtor) + (state.antiNormalHold ? -90.0 : 90.0);
-            if(state.rcsThrustAngle) {
+            if (state.rcsThrustAngle) {
 
             }
         }
@@ -84,50 +83,38 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
         state.x += state.xv;
         state.y += state.yv;
 
-        //for now this can be handled generically by Game
-        // if (game.ship.x > settings.display.width) game.ship.x -= settings.display.width;
-        // if (game.ship.x < 0) game.ship.x += settings.display.width;
-        // if (game.ship.y > settings.display.height) game.ship.y -= settings.display.height;
-        // if (game.ship.y < 0) game.ship.y += settings.display.height;
     }
     const render = (draw) => {
-        draw.svg.select('#sl1').remove();
-        draw.svg.select('#sl2').remove();
-        draw.svg.select('#sl3').remove();
-        draw.svg.select('#savec1').remove();
-        draw.svg.select('#savec2').remove();
-        draw.svg.select('#savec').remove();
 
-        draw.drawline('sl1', lineData[0], 2, 'white', state.x, state.y, state.a);
-        draw.drawline('sl2', lineData[1], 2, 'white', state.x, state.y, state.a);
-        draw.drawline('sl3', lineData[2], 2, 'white', state.x, state.y, state.a);
+        if (!shipContainer) {
+            const svg = document.getElementById('theSvg');
+            shipContainer = draw.addChildGroup(svg, 'shipContainer');
+            shipGroup = draw.addChildGroup(shipContainer, 'shipGroup');
+            flameGroup = draw.addChildGroup(shipContainer, 'flameGroup');
+            shipContainer.appendChild(flameGroup);
+            lineData.forEach((o) => draw.createLine(shipGroup, o.x1, o.y1, o.x2, o.y2, 2, 'white'));
+        }
 
-        const avfact = 10000.0;
+        shipGroup.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a})`);
         const jiggle = () => Math.random() * 5.0 - 2.5;
+
+        draw.clearGroup(flameGroup);
         if ((state.rcsThrustEngaged && (state.pro_grade_hold || state.retro_grade_hold))) {
-            //(id, cords, sw, c, tx, ty, rot)
-            draw.rects.append('line').attr('id', 'savec1')
-            .attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', -size/2)
-            .attr('stroke-width', 3).attr('stroke', '#d04005')
-            .attr('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(${-size/2},${-size/2})`);
-            
-            draw.rects.append('line').attr('id', 'savec2')
-            .attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', -size/2)
-            .attr('stroke-width', 3).attr('stroke', '#d04005')
-            .attr('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(${size/2},${-size/2})`);
-        } else if(state.mainThrustEngaged) {
-            draw.rects.append('line').attr('id', 'savec')
-            .attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', -state.t*1500.0)
-            .attr('stroke-width', 3).attr('stroke', 'orange')
-            .attr('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(0,${-size/2})`);    
-        } 
+            const leftThruster = draw.createLine(flameGroup, 0, 0, 0, -size / 2.0, 3, '#d04005');
+            leftThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(${-size / 2},${-size / 2})`);
+            const rightThruster = draw.createLine(flameGroup, 0, 0, 0, -size / 2, 3, '#d04005');
+            rightThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(${size / 2},${-size / 2})`);
+        } else if (state.mainThrustEngaged) {
+            const mainThruster = draw.createLine(flameGroup, 0, 0, 0, -state.t * 1500.0, 3, 'orange');
+            mainThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(0,${-size / 2})`);
+        }
     }
     const commandMatrix = {
         'KeyA_down': () => { state.av = -settings.ship.angularDelta; },
         'KeyD_down': () => { state.av = settings.ship.angularDelta; },
         'KeyW_down': () => {
-            state.mainThrustEngaged = true; 
-            state.tv = settings.ship.thrust / 15.0; 
+            state.mainThrustEngaged = true;
+            state.tv = settings.ship.thrust / 15.0;
         },
         'KeyS_down': () => { state.t = 0;/*most games you have only forward thrust*/ },
         'KeyA_up': () => { state.av = 0; },
@@ -142,7 +129,6 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
         'KeyI_down': () => {
             state.pro_grade_hold = true;
             state.retro_grade_hold = false;
-            dbg = true;
         },
         'KeyI_up': () => {
             state.pro_grade_hold = false;
