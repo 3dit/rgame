@@ -1,13 +1,13 @@
 import "./styles.css";
 import { settings } from "./config";
-import Game from "./Game";
+import Viewport from "./Viewport";
 import Interface from "./Interface";
+import Game from './Game';
 
 export default function App() {
   return (
     <div className="App">
-      <Game/>
-      <Interface/>
+      <Game />
     </div>
   );
 }

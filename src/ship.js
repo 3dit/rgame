@@ -1,14 +1,13 @@
 import { settings } from "./config";
-import * as d3 from 'd3';
-
-const dtor = Math.PI / 180.0;
+import { core } from "./core";
+import ReactDOMServer from 'react-dom/server';
 
 const size = 15;
-const lineData = [
-    { x1: 0, y1: -size, x2: -size / 2, y2: size / 2 },
-    { x1: -size / 2, y1: size / 2, x2: size / 2, y2: size / 2 },
-    { x1: size / 2, y1: size / 2, x2: 0, y2: -size }
-];
+// const lineData = [
+//     { x1: 0, y1: -size, x2: -size / 2, y2: size / 2 },
+//     { x1: -size / 2, y1: size / 2, x2: size / 2, y2: size / 2 },
+//     { x1: size / 2, y1: size / 2, x2: 0, y2: -size }
+// ];
 
 let shipGroup = null;
 let flameGroup = null;
@@ -31,7 +30,7 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
     const compute_avec = () => {
         const xdelta = state.x - settings.star.xpos;
         const ydelta = state.y - settings.star.ypos;
-        return (Math.atan2(ydelta, xdelta) + (0 * Math.PI / 2.0)) / dtor;
+        return (Math.atan2(ydelta, xdelta)) / core.dtor;
     }
 
     const step = (game) => {
@@ -42,8 +41,8 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
             state.t = settings.ship.thrust;
             state.tv = 0;
         }
-        state.xv += Math.sin(state.a * dtor) * state.t * .5;
-        state.yv -= Math.cos(state.a * dtor) * state.t * .5;
+        state.xv += Math.sin(state.a * core.dtor) * state.t * .5;
+        state.yv -= Math.cos(state.a * core.dtor) * state.t * .5;
 
         if (state.pro_grade_hold || state.retro_grade_hold) {
             const angle = compute_avec();
@@ -64,8 +63,8 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
 
             if (state.rcsThrustEngaged) {
                 const avec_thrust = settings.ship.thrust / 5.0 * direction;
-                state.avx = Math.sin(angle * dtor) * avec_thrust;
-                state.avy = -Math.cos(angle * dtor) * avec_thrust;
+                state.avx = Math.sin(angle * core.dtor) * avec_thrust;
+                state.avy = -Math.cos(angle * core.dtor) * avec_thrust;
                 state.xv += state.avx;
                 state.yv += state.avy;
             }
@@ -74,7 +73,7 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
             const deltax = settings.star.xpos - state.x;
             const deltay = settings.star.ypos - state.y;
             const angle_rad = Math.atan2(deltay, deltax);
-            state.a = (angle_rad / dtor) + (state.antiNormalHold ? -90.0 : 90.0);
+            state.a = (angle_rad / core.dtor) + (state.antiNormalHold ? -90.0 : 90.0);
             if (state.rcsThrustAngle) {
 
             }
@@ -84,20 +83,45 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
         state.y += state.yv;
 
     }
-    const render = (draw) => {
 
-        if (!shipContainer) {
-            const svg = document.getElementById('theSvg');
-            shipContainer = draw.addChildGroup(svg, 'shipContainer');
-            shipGroup = draw.addChildGroup(shipContainer, 'shipGroup');
-            flameGroup = draw.addChildGroup(shipContainer, 'flameGroup');
-            shipContainer.appendChild(flameGroup);
-            lineData.forEach((o) => draw.createLine(shipGroup, o.x1, o.y1, o.x2, o.y2, 2, 'white'));
+    const getRenderRoot = (id) => {
+        const RenderRoot = () => {
+            //console.log(game.actors);
+            //console.log(ship);
+            return (
+                <g id="shipContainer">
+                    <g id="shipGroup">
+                        <polygon id={id}
+                            points={`0,-${size} ${-size / 2},${size / 2} ${size / 2},${size / 2}`}
+                            stroke="white" strokeWidth="2">
+                        </polygon>
+                    </g>
+                    <g id="flameGroup" />
+                </g>
+            )
         }
+        return ReactDOMServer.renderToString(<RenderRoot />);
+    }
+
+    const render = (draw) => {
+        //shipContainer || initialRender(draw);
+        if (!shipContainer) {
+            shipContainer = document.getElementById('shipContainer');
+            shipGroup = document.getElementById('shipGroup');
+            flameGroup = document.getElementById('flameGroup');
+        }
+
+        if (!shipGroup) window.stopme = true;
 
         shipGroup.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a})`);
         const jiggle = () => Math.random() * 5.0 - 2.5;
 
+        //draw.deleteGroup(flameGroup);
+        // let nextone = document.getElementById('flameGroup');
+        // if(nextone) {
+        //     draw.deleteGroup(nextone);
+        // }
+        //flameGroup = draw.addChildGroup(shipContainer, 'flameGroup');
         draw.clearGroup(flameGroup);
         if ((state.rcsThrustEngaged && (state.pro_grade_hold || state.retro_grade_hold))) {
             const leftThruster = draw.createLine(flameGroup, 0, 0, 0, -size / 2.0, 3, '#d04005');
@@ -108,6 +132,8 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
             const mainThruster = draw.createLine(flameGroup, 0, 0, 0, -state.t * 1500.0, 3, 'orange');
             mainThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(0,${-size / 2})`);
         }
+
+        return
     }
     const commandMatrix = {
         'KeyA_down': () => { state.av = -settings.ship.angularDelta; },
@@ -174,7 +200,8 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
             }
         },
         render: render,
-        step: step
+        step: step,
+        getRenderRoot: getRenderRoot
     }
 }
 

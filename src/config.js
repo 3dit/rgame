@@ -1,15 +1,9 @@
 const width = window.innerWidth ;
-const height = window.innerWidth * (10.0/16.0);
+const height = window.innerHeight - 60;
 const settings = { 
     display: {
       width: width,
       height: height,
-      ratio: () => {
-        console.log(this);
-        return (
-          parseFloat(settings.display.width) / parseFloat(settings.display.height)
-        );
-      }
     },
     star: {
         xpos: width/2,
