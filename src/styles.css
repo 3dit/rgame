@@ -68,3 +68,9 @@
   #gameDiv {
     background-color:#333;
   }
+
+  #textlog {
+    font: 15px consolas;
+    fill: #bfa;
+    font-weight:100;
+  }

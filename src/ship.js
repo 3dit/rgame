@@ -1,3 +1,4 @@
+import { utcMillisecond } from "d3";
 import { settings } from "./config";
 import { core } from "./core";
 import ReactDOMServer from 'react-dom/server';
@@ -13,17 +14,23 @@ let shipGroup = null;
 let flameGroup = null;
 let shipContainer = null;
 
-function ship({ id, name, x, y, xv, yv, a, av }) {
+function ship({ id, name, x, y, xv, yv, a, av, shells }) {
     let first = true;
     const state = { ...arguments[0], t: 0, tv: 0, physform: true };
 
-    state.pro_grade_hold = false;
-    state.retro_grade_hold = false;
-    state.mainThrustEngaged = false;
+    state.proGradeHold = false;
+    state.retroGradeHold = false;
+    state.thrustersEngaged = false;
     state.rcsThrustAngle = 0;
-    state.rcsThrustEngaged = false;
+    state.canonEngaged = false;
     state.normalHold = false;
     state.antiNormalHold = false;
+    state.trueProGradeHold = false;
+    state.trueRetroGradeHold = false;
+
+
+    const canonFireRate = 200.0;//fire every 'x' millseconds
+    let lastCannonFired = null;
 
     let dbg = false;
 
@@ -34,6 +41,9 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
     }
 
     const step = (game) => {
+        let direction = null;
+        let angle = 0;
+
         //if (dbg) debugger;
         state.a += state.av;
         state.t += state.tv;
@@ -44,63 +54,99 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
         state.xv += Math.sin(state.a * core.dtor) * state.t * .5;
         state.yv -= Math.cos(state.a * core.dtor) * state.t * .5;
 
-        if (state.pro_grade_hold || state.retro_grade_hold) {
-            const angle = compute_avec();
-            const Ax = settings.star.xpos;
-            const Ay = settings.star.ypos;
-            const Bx = state.x;
-            const By = state.y;
-            const Cx = state.x + state.xv;
-            const Cy = state.y + state.yv;
-            const dotProduct = (Bx - Ax) * (Cy - Ay) - (By - Ay) * (Cx - Ax);
-            let direction = Math.sign(dotProduct);
+        if (state.trueProGradeHold || state.trueRetroGradeHold) {
+            const xdelta = state.xv;
+            const ydelta = state.yv;
+            const a = (Math.atan2(ydelta, xdelta) / core.dtor) + (state.trueProGradeHold ? + 90.0 : -90.0);
+            state.a = a;
+        } else if (state.proGradeHold || state.retroGradeHold) {
+            angle = compute_avec();
+            // const Ax = settings.star.xpos;
+            // const Ay = settings.star.ypos;
+            // const Bx = state.x;
+            // const By = state.y;
+            // const Cx = state.x + state.xv;
+            // const Cy = state.y + state.yv;
+            //const dotProduct = (Bx - Ax) * (Cy - Ay) - (By - Ay) * (Cx - Ax);
+            const dotProduct = core.dotProductPlaner(settings.star.xpos, settings.star.ypos, state.x, state.y, state.x + state.xv, state.y + state.yv);
+            direction = Math.sign(dotProduct);
             state.rcsThrustAngle = angle;
-            if (state.pro_grade_hold) {
+            if (state.proGradeHold) {
                 direction *= -1.0;
             }
 
             state.a = (direction > 0) ? angle : angle + 180.0;
-
-            if (state.rcsThrustEngaged) {
-                const avec_thrust = settings.ship.thrust / 5.0 * direction;
-                state.avx = Math.sin(angle * core.dtor) * avec_thrust;
-                state.avy = -Math.cos(angle * core.dtor) * avec_thrust;
-                state.xv += state.avx;
-                state.yv += state.avy;
-            }
-
         } else if (state.normalHold || state.antiNormalHold) {
             const deltax = settings.star.xpos - state.x;
             const deltay = settings.star.ypos - state.y;
             const angle_rad = Math.atan2(deltay, deltax);
             state.a = (angle_rad / core.dtor) + (state.antiNormalHold ? -90.0 : 90.0);
-            if (state.rcsThrustAngle) {
+        }
+        if (state.thrustersEngaged) {
+            //rcsThrusters
+            const avec_thrust = settings.ship.thrust / 5.0 * direction;
+            state.avx = Math.sin(angle * core.dtor) * avec_thrust;
+            state.avy = -Math.cos(angle * core.dtor) * avec_thrust;
+            state.xv += state.avx;
+            state.yv += state.avy;
+        }
 
-            }
+        if (state.canonEngaged) {
+
         }
 
         state.x += state.xv;
         state.y += state.yv;
 
+        if (state.canonEngaged) {
+            let delta = 0;
+            if (lastCannonFired === null) {
+                delta = canonFireRate;
+            }
+            else {
+                delta = (new Date()) - lastCannonFired;
+            }
+
+            if (delta >= canonFireRate) {
+                lastCannonFired = new Date();
+                let nextShell = shells.find(o => o?.state.enabled === false);
+                if (nextShell) {
+                    console.log(nextShell);
+                    nextShell.state.age = 0;
+                    nextShell.state.enabled = true;
+                    let xvec = Math.sin(state.a * core.dtor);
+                    let yvec = -Math.cos(state.a * core.dtor);
+                    nextShell.state.x = state.x + (xvec * size);
+                    nextShell.state.y = state.y + (yvec * size);
+                    nextShell.state.xv = state.xv + (xvec * settings.shells.velocity);
+                    nextShell.state.yv = state.yv + (yvec * settings.shells.velocity);
+                } else {
+                    //ran out of shells
+                }
+            }
+        }
+
+
+    }
+
+    const RootTemplate = ({ id }) => {
+        //console.log(game.actors);
+        //console.log(ship);
+        return (
+            <g id="shipContainer">
+                <g id="shipGroup">
+                    <polygon id={`shipPolygon${id}`}
+                        points={`0,-${size} ${-size / 2},${size / 2} ${size / 2},${size / 2}`}
+                        stroke="white" strokeWidth="2">
+                    </polygon>
+                </g>
+                <g id="flameGroup" />
+            </g>
+        )
     }
 
     const getRenderRoot = (id) => {
-        const RenderRoot = () => {
-            //console.log(game.actors);
-            //console.log(ship);
-            return (
-                <g id="shipContainer">
-                    <g id="shipGroup">
-                        <polygon id={id}
-                            points={`0,-${size} ${-size / 2},${size / 2} ${size / 2},${size / 2}`}
-                            stroke="white" strokeWidth="2">
-                        </polygon>
-                    </g>
-                    <g id="flameGroup" />
-                </g>
-            )
-        }
-        return ReactDOMServer.renderToString(<RenderRoot />);
+        return ReactDOMServer.renderToString(<RootTemplate id={id} />);
     }
 
     const render = (draw) => {
@@ -113,6 +159,16 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
 
         if (!shipGroup) window.stopme = true;
 
+        const rcsThrusters =
+            state.thrustersEngaged &&
+            (state.retroGradeHold
+                || state.proGradeHold
+                || state.normalHold
+                || state.antiNormalHold
+                || state.trueProGradeHold
+                || state.trueRetroGradeHold
+            );
+
         shipGroup.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a})`);
         const jiggle = () => Math.random() * 5.0 - 2.5;
 
@@ -123,50 +179,47 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
         // }
         //flameGroup = draw.addChildGroup(shipContainer, 'flameGroup');
         draw.clearGroup(flameGroup);
-        if ((state.rcsThrustEngaged && (state.pro_grade_hold || state.retro_grade_hold))) {
+        if ((rcsThrusters /*&& (state.proGradeHold || state.retroGradeHold) */)) {
             const leftThruster = draw.createLine(flameGroup, 0, 0, 0, -size / 2.0, 3, '#d04005');
             leftThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(${-size / 2},${-size / 2})`);
             const rightThruster = draw.createLine(flameGroup, 0, 0, 0, -size / 2, 3, '#d04005');
             rightThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(${size / 2},${-size / 2})`);
-        } else if (state.mainThrustEngaged) {
+        } else if (state.thrustersEngaged) {
             const mainThruster = draw.createLine(flameGroup, 0, 0, 0, -state.t * 1500.0, 3, 'orange');
             mainThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(0,${-size / 2})`);
         }
-
-        return
     }
     const commandMatrix = {
         'KeyA_down': () => { state.av = -settings.ship.angularDelta; },
         'KeyD_down': () => { state.av = settings.ship.angularDelta; },
         'KeyW_down': () => {
-            state.mainThrustEngaged = true;
+            state.thrustersEngaged = true;
             state.tv = settings.ship.thrust / 15.0;
         },
         'KeyS_down': () => { state.t = 0;/*most games you have only forward thrust*/ },
         'KeyA_up': () => { state.av = 0; },
         'KeyD_up': () => { state.av = 0; },
         'KeyW_up': () => {
-            state.mainThrustEngaged = false;
+            state.thrustersEngaged = false;
             state.tv = 0;
             state.t = 0;
         },
         'KeyS_up': () => { state.t = 0; },
         'KeyI_down': () => { console.log('##########', JSON.stringify(state)); },
         'KeyI_down': () => {
-            state.pro_grade_hold = true;
-            state.retro_grade_hold = false;
+            state.trueProGradeHold = true;
+            state.trueRetroGradeHold = false;
         },
         'KeyI_up': () => {
-            state.pro_grade_hold = false;
-            state.retro_grade_hold = false;
+            state.trueProGradeHold = state.trueRetroGradeHold = false;
         },
         'KeyK_down': () => {
-            state.pro_grade_hold = false;
-            state.retro_grade_hold = true;
+            state.trueRetroGradeHold = true;
+            state.trueProGradeHold = false;
         },
         'KeyK_up': () => {
-            state.pro_grade_hold = false;
-            state.retro_grade_hold = false;
+            state.trueProGradeHold = state.trueRetroGradeHold = false
+
         },
         'KeyJ_down': () => {
             state.normalHold = true;
@@ -185,23 +238,40 @@ function ship({ id, name, x, y, xv, yv, a, av }) {
             state.normalHold = false;
         },
         'Space_down': () => {
-            state.rcsThrustEngaged = true;
+            state.canonEngaged = true;
         },
         'Space_up': () => {
-            state.rcsThrustEngaged = false;
+            state.canonEngaged = false;
+            lastCannonFired = null;
+        },
+        'Comma_down': () => {
+            state.proGradeHold = false;
+            state.retroGradeHold = true;
+        },
+        'Comma_up': () => {
+            state.proGradeHold = false;
+            state.retroGradeHold = false;
+        },
+        'Period_down': () => {
+            state.proGradeHold = true;
+            state.retroGradeHold = false;
+        },
+        'Period_up': () => {
+            state.proGradeHold = false;
+            state.retroGradeHold = false;
         }
     }
     return {
-        state: state,
+        state,
         handleKeyEvents: (keyEvents) => {
             for (let i = 0; i < keyEvents.length; i++) {
                 let cmd = commandMatrix[keyEvents[i].meta()];
                 if (cmd) cmd();
             }
         },
-        render: render,
-        step: step,
-        getRenderRoot: getRenderRoot
+        render,
+        step,
+        getRenderRoot,
     }
 }
 

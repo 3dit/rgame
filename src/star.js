@@ -7,11 +7,14 @@ function star({ id, name, x, y, xv, yv, a, av }) {
     const size = settings.star.size;
     const fadeCoefficent = 0.01; //originally "2.0 * distance / .01"
     const state = { ...arguments[0], t: 0, physform: false };
+    console.log(state);
+    state.enabled = false;
 
     let starContainer = null;
 
     const step = (game) => {
         //star grav effects
+        if(!state.enabled) return;
         game.actors.forEach((o, i, a) => {
             //debugger;
             if (o.state.id != state.id && o.state.physform) {
@@ -25,7 +28,7 @@ function star({ id, name, x, y, xv, yv, a, av }) {
     const getRenderRoot = (id) => {
         const RenderRoot = () => {
             return (
-                <g id="starContainer">
+                <g id="starContainer" style={{'display':'none'}}>
                     <defs>
                         <radialgradient id="starGradiant">
                             <stop offset="10%" stopColor="gold" />
@@ -46,6 +49,11 @@ function star({ id, name, x, y, xv, yv, a, av }) {
     }
 
     const render = (draw) => {
+        if(state.enabled) {
+            document.getElementById('starContainer')?.setAttribute('style','display:block');
+        } else {
+            document.getElementById('starContainer')?.setAttribute('style','display:none');
+        }
         // for (let i = 0; i < rayCnt; i++) {
         //     let a = Math.random() / draw.dtor;
         //     let corona = Math.random() * size / 8;

@@ -5,6 +5,10 @@ const settings = {
       width: width,
       height: height,
     },
+    asteroids: {
+      initialSize: 60,
+      minimumSize: 10
+    },
     star: {
         xpos: width/2,
         ypos: height/2,
@@ -16,6 +20,7 @@ const settings = {
       grav: 250
     },
     ship: {
+        angularAcceleration: .3,
         angularDelta: 1.9456,
         thrust: .01
     },
@@ -23,6 +28,11 @@ const settings = {
       gravMinDistance: 50.0,
       gravMaxForce: .0025,
       gravDistanceCoef: 5.0
+    },
+    shells: {
+      maxShellCnt: 20,
+      maxShellAge: 500,
+      velocity: 2.2,
     },
     drawLib: () => { console.log('GENERIC DRAWLIB CALLED')},
     

@@ -17,7 +17,16 @@ const core = {
         return { x: Math.cos(starAngle) * gravForce, y: Math.sin(starAngle) * gravForce };
     },
     dtor: Math.PI / 180.0,
-    rtod: 180.0 / Math.PI
+    rtod: 180.0 / Math.PI,
+    dotProductPlaner: (aX, aY, bX, bY, cX, cY) => {
+        //if(!window.printoutx) { console.log(xxx); window.printoutx = true; };
+        return (bX - aX) * (cY - aY) - (bY - aY) * (cX - cY);
+    },
+    dotProductPlanerCoords : (a, b, c) => {
+        console.log(this.dotProductPlaner);
+        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - c.y);
+    }
 }
+
 
 export { core };
