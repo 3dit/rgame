@@ -25,7 +25,7 @@ function star({ id, name, x, y, xv, yv, a, av }) {
         });
     }
 
-    const getRenderRoot = (id) => {
+    const getRootTemplate = (id) => {
         const RenderRoot = () => {
             return (
                 <g id="starContainer" style={{'display':'none'}}>
@@ -49,11 +49,7 @@ function star({ id, name, x, y, xv, yv, a, av }) {
     }
 
     const render = (draw) => {
-        if(state.enabled) {
-            document.getElementById('starContainer')?.setAttribute('style','display:block');
-        } else {
-            document.getElementById('starContainer')?.setAttribute('style','display:none');
-        }
+        core.setVisibileById('starContainer', state.enabled);
         // for (let i = 0; i < rayCnt; i++) {
         //     let a = Math.random() / draw.dtor;
         //     let corona = Math.random() * size / 8;
@@ -71,7 +67,7 @@ function star({ id, name, x, y, xv, yv, a, av }) {
         handleKeyEvents: (keyEvents) => { },
         render: render,
         step: step,
-        getRenderRoot: getRenderRoot
+        getRootTemplate
     }
 }
 

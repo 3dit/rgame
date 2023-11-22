@@ -20,16 +20,21 @@ const Game = () => {
     let svg;
     let draw;
 
-    let frameCount = 0;
+    let frameCountFPS = 0;
+    let totalFrameCount = 0;
     let currentFrameRate = 0;
 
+    let tlog = null;
+
+    //interval to update text 'log' feedback
     setInterval(() => {
-        currentFrameRate = frameCount;
-        frameCount = 0;
-        let tlog = document.getElementById('textlog');
-        let text = `framerate ${currentFrameRate*4} FPS`;
+        currentFrameRate = frameCountFPS;
+        frameCountFPS = 0;
+        tlog = tlog ?? document.getElementById('textlog');
+        const text = `FPS ${currentFrameRate * 4}  TFC ${totalFrameCount}`;
         tlog && (tlog.textContent = text);
-    },250);
+        settings.global.averageFrameRate = currentFrameRate;
+    }, 1000);
 
     let rootElement;
 
@@ -46,7 +51,7 @@ const Game = () => {
 
     let initialState = {
         initialized: false,
-        keyCodes: {},
+        keyCodeTracker: {},
         keyEvents: [],
         actors: initialActors,
         width: settings.display.width,
@@ -64,7 +69,7 @@ const Game = () => {
         newActor.state.id = nextId;
         game.actors.push(newActor);
         let theSvg = document.getElementById('theSvg');
-        let markup = newActor.getRenderRoot(nextId);
+        let markup = newActor.getRootTemplate(nextId);
         theSvg.insertAdjacentHTML('beforeend', markup);
         return newActor;
     }
@@ -122,7 +127,7 @@ const Game = () => {
             const xloc = Math.random() * displayWidth;
             const yloc = Math.random() * displayHeight;
             let size = Math.pow(Math.random() * 1.2, 2);
-            const id = parseInt((Math.random() * 5) + 8).toString(16);//base 16/hex from 1/2 to full white
+            const id = parseInt((Math.random() * 5) + 8).toString(16);//base 16/hex from decimal 8 to 13
             let clr = `#${id}${id}${id}${id}`;
             ctx.arc(xloc, yloc, size, 0, 2 * Math.PI);
             ctx.fillStyle = clr;
@@ -148,22 +153,47 @@ const Game = () => {
         // }
         draw = drawLib(null, svg, svgRoot);
 
+        const isCtrlZero = (e) => e?.ctrlKey && e?.key === '0';
+
         const handleKeyDown = (event) => {
+            if (event.key === 'Control' || event.key === 'Alt') return;
             if (event.code !== "F12" && event.code !== "F11") event.preventDefault();
             const code = event.code;
-            if (!game.keyCodes[code]) {
-                game.keyEvents.push({ action: key_down, key: code, meta: () => `${code}_down`, time: event.timeStamp });
-                game.keyCodes[code] = event.timeStamp;
+            if (!game.keyCodeTracker[code]) {
+                let newKeyEvent = {
+                    action: key_down,
+                    key: code,
+                    meta: () => `${code}_down`, //does this need to be a function?
+                    metaCode: `${code}_down`, //wouldn't metaCode serve same function as the 'meta' lambda?
+                    time: event.timeStamp,
+                    totalFrameCount: totalFrameCount
+                };
+                game.keyEvents.push(newKeyEvent);
+                game.keyCodeTracker[code] = {
+                    timeStamp: event.timeStamp,
+                    totalFrameCount: totalFrameCount
+                }
             }
         };
 
         const handleKeyUp = (event) => {
+            if (event.key === 'Control' || event.key === 'Alt') return;
             event.preventDefault();
             const code = event.code;
-            if (game.keyCodes[code]) {
-                game.keyEvents.push({ action: key_up, key: code, time: event.d, meta: () => `${code}_up`, delta: event.timeStamp - game.keyCodes[code] });
+            if (game.keyCodeTracker[code]) {
+                let newKeyEvent = {
+                    action: key_up,
+                    key: code,
+                    time: event.timeStamp,
+                    meta: () => `${code}_up`,
+                    metaCode: `${code}_up`,
+                    delta: event.timeStamp - game.keyCodeTracker[code].timeStamp,
+                    totalFrameCount: totalFrameCount,
+                    totalFrameDelta: totalFrameCount - game.keyCodeTracker[code].totalFrameCount
+                };
+                game.keyEvents.push(newKeyEvent);
             }
-            delete game.keyCodes[code];
+            delete game.keyCodeTracker[code];
         };
 
         const wrapToVisibleFrame = (actor) => {
@@ -179,7 +209,8 @@ const Game = () => {
         document.addEventListener("keyup", handleKeyUp);
 
         const updateFrame = () => {
-            frameCount++;
+            frameCountFPS++;
+            totalFrameCount++;
 
             if (window.stopme) {
                 requestAnimationFrame(updateFrame);
@@ -221,11 +252,11 @@ const Game = () => {
                 }
             });
 
-            if(flagDebugger) debugger;
+            if (flagDebugger) debugger;
 
             let markedForDelete = game.actors.filter(n => n.state?.markForDelete === true);
             let deleteIds = [];
-            if(markedForDelete.length) {
+            if (markedForDelete.length) {
                 markedForDelete.forEach((o) => deleteIds.push(o.state.id));
                 // if(!window.apo) { 
                 //     console.log(deleteIds);
@@ -234,10 +265,10 @@ const Game = () => {
             }
             deleteIds.forEach((idToDelete) => {
                 let itemIndex = game.actors.findIndex((o) => o.state?.id === idToDelete);
-                if(game.actors[itemIndex].removeSelf) game.actors[itemIndex].removeSelf();
-                if(itemIndex!==-1) game.actors.splice(itemIndex,1 );
+                if (game.actors[itemIndex].removeSelf) game.actors[itemIndex].removeSelf();
+                if (itemIndex !== -1) game.actors.splice(itemIndex, 1);
             });
-            
+
 
             game.keyEvents.splice(0, game.keyEvents.length);
 
@@ -271,22 +302,22 @@ const Game = () => {
     const handleSplitAsteroid = (sourceAsteroid, point, velocity) => {
         console.log(`SPLIT`, sourceAsteroid);
         let newSize = sourceAsteroid.size / 2.0;
-        if(newSize<settings.asteroids.minimumSize) return;
+        if (newSize < settings.asteroids.minimumSize) return;
 
-        let massDampening = .0001;
+        let massDampening = .1;
 
-        let newXv1 = (sourceAsteroid.xv * massDampening) /*+ (velocity.x * massDampening)*/ + (Math.random()/2.0 + .5) ;
-        let newYv1 = (sourceAsteroid.yv * massDampening)/*+ (velocity.y * massDampening)*/ + (Math.random()/2.0 + .5);
+        let newXv1 = (sourceAsteroid.xv * massDampening) + (velocity.x * massDampening) + (Math.random() / 2.0 + .5);
+        let newYv1 = (sourceAsteroid.yv * massDampening) + (velocity.y * massDampening) + (Math.random() / 2.0 + .5);
         newXv1 = Math.random() - 0.5;
         newYv1 = Math.random() - 0.5;
         let newAv1 = sourceAsteroid.av * (Math.random() - 0.5);
         const split1 = addActor(new asteroid({ ...defaultShipConfig, name: 'asteroid', x: point.x, y: point.y, xv: newXv1, yv: newYv1, av: newAv1, size: newSize }, handleSplitAsteroid));
-        let newXv2 = (sourceAsteroid.xv * massDampening) /*+ velocity.x*/ + (Math.random()/2.0 + .5) ;
-        let newYv2 = (sourceAsteroid.yv * massDampening) /*+ velocity.y*/ + (Math.random()/2.0 + .5);
+        let newXv2 = (sourceAsteroid.xv * massDampening) /*+ velocity.x*/ + (Math.random() / 2.0 + .5);
+        let newYv2 = (sourceAsteroid.yv * massDampening) /*+ velocity.y*/ + (Math.random() / 2.0 + .5);
         newXv2 = Math.random() - 0.5;
         newYv2 = Math.random() - 0.5;
         let newAv2 = sourceAsteroid.av * (Math.random() - 0.5);
-        const split2 = addActor(new asteroid({ ...defaultShipConfig, name: 'asteroid', x: point.x, y: point.y, xv: newXv2, yv: newYv2, av: newAv2, size: newSize }, handleSplitAsteroid ));
+        const split2 = addActor(new asteroid({ ...defaultShipConfig, name: 'asteroid', x: point.x, y: point.y, xv: newXv2, yv: newYv2, av: newAv2, size: newSize }, handleSplitAsteroid));
 
         //flagDebugger = true;
     }

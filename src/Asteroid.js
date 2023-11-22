@@ -41,7 +41,7 @@ function asteroid({ id, name, x, y, xv, yv, a, av, size }, handleSplitAsteroid) 
         return vt;
     }
 
-    vticks = smooth(vticks, 1);
+    vticks = smooth(vticks, 10);
     vticks.forEach((o) => {
         points.push({ x: parseInt(Math.sin(o.a) * o.l), y: parseInt(Math.cos(o.a) * o.l) });
     })
@@ -79,7 +79,7 @@ function asteroid({ id, name, x, y, xv, yv, a, av, size }, handleSplitAsteroid) 
         }
     }
 
-    const getRenderRoot = (id) => {
+    const getRootTemplate = (id) => {
         console.log('get render root ', id);
         const RenderRoot = (id) => {
             let rid = `asteroidContainer${id}`;
@@ -120,8 +120,8 @@ function asteroid({ id, name, x, y, xv, yv, a, av, size }, handleSplitAsteroid) 
         },
         render: render,
         step: step,
-        effectOther: effectOther,
-        getRenderRoot: getRenderRoot,
+        effectOther,
+        getRootTemplate,
         shellStrike,
         removeSelf
     }

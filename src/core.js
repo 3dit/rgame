@@ -25,6 +25,15 @@ const core = {
     dotProductPlanerCoords : (a, b, c) => {
         console.log(this.dotProductPlaner);
         return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - c.y);
+    },
+    hideById : (id) => {
+        document.getElementById(id)?.setAttribute('style','display:none');
+    },
+    showById : (id) => {
+        document.getElementById(id)?.setAttribute('style','display:block');
+    },
+    setVisibileById: (id, visibleFlag) => {
+        document.getElementById(id)?.setAttribute('style',`display:${visibleFlag ? 'block' : 'none'}`);
     }
 }
 

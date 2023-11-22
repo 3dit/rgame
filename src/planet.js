@@ -28,7 +28,7 @@ function planet({ id, name, x, y, xv, yv, a, av }) {
         }
     }
 
-    const getRenderRoot = (id) => {
+    const getRootTemplate = (id) => {
         console.log('render root', id);
         const RenderRoot = () => {
             //console.log(game.actors);
@@ -64,7 +64,7 @@ function planet({ id, name, x, y, xv, yv, a, av }) {
         render: render,
         step: step,
         effectOther: effectOther,
-        getRenderRoot: getRenderRoot
+        getRootTemplate
     }
 }
 

@@ -16,7 +16,7 @@ let shipContainer = null;
 
 function ship({ id, name, x, y, xv, yv, a, av, shells }) {
     let first = true;
-    const state = { ...arguments[0], t: 0, tv: 0, physform: true };
+    const state = { ...arguments[0], t: 0, tv: 0, physform: true, avr: 0 };
 
     state.proGradeHold = false;
     state.retroGradeHold = false;
@@ -45,8 +45,11 @@ function ship({ id, name, x, y, xv, yv, a, av, shells }) {
         let angle = 0;
 
         //if (dbg) debugger;
-        state.a += state.av;
+        state.a += state.av + state.avr;//angular velocity remnant avr represents additional fractional velocity resulting from partial key down time between frames
+        state.avr = 0;//avr set by keyup, reset every frame step
+
         state.t += state.tv;
+
         if (state.t > settings.ship.thrust) {
             state.t = settings.ship.thrust;
             state.tv = 0;
@@ -145,7 +148,7 @@ function ship({ id, name, x, y, xv, yv, a, av, shells }) {
         )
     }
 
-    const getRenderRoot = (id) => {
+    const getRootTemplate = (id) => {
         return ReactDOMServer.renderToString(<RootTemplate id={id} />);
     }
 
@@ -185,20 +188,35 @@ function ship({ id, name, x, y, xv, yv, a, av, shells }) {
             const rightThruster = draw.createLine(flameGroup, 0, 0, 0, -size / 2, 3, '#d04005');
             rightThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(${size / 2},${-size / 2})`);
         } else if (state.thrustersEngaged) {
-            const mainThruster = draw.createLine(flameGroup, 0, 0, 0, -state.t * 1500.0, 3, 'orange');
+            const mainThruster = draw.createLine(flameGroup, 0, 0, 0, -state.t * 1500.0 * settings.ship.thrustPlumeRatio, 3, 'orange');
             mainThruster.setAttribute('transform', `translate(${state.x},${state.y}) rotate(${state.a + 180.0 + jiggle()}) translate(0,${-size / 2})`);
         }
     }
     const commandMatrix = {
-        'KeyA_down': () => { state.av = -settings.ship.angularDelta; },
-        'KeyD_down': () => { state.av = settings.ship.angularDelta; },
+        'KeyA_down': (e) => { 
+            state.av = -settings.ship.angularDelta;
+         },
+        'KeyD_down': () => { 
+            state.av = settings.ship.angularDelta;
+         },
         'KeyW_down': () => {
             state.thrustersEngaged = true;
             state.tv = settings.ship.thrust / 15.0;
         },
         'KeyS_down': () => { state.t = 0;/*most games you have only forward thrust*/ },
-        'KeyA_up': () => { state.av = 0; },
-        'KeyD_up': () => { state.av = 0; },
+        'KeyA_up': (e) => { 
+            let totalMillesecondsForAllPreviousFrames = e.totalFrameDelta / settings.global.averageFrameRate * 1000;//total milleseconds used for all previously run frames at average frames/ms
+            let deltaMs = e.delta - totalMillesecondsForAllPreviousFrames;
+            state.avr = state.av * (deltaMs / 120.0);
+            
+            state.av = 0;
+        },
+        'KeyD_up': (e) => { 
+            let totalMillesecondsForAllPreviousFrames = e.totalFrameDelta / 120.0 * 1000;//total milleseconds used for all previously run frames at 120 frames/ms
+            let deltaMs = e.delta - totalMillesecondsForAllPreviousFrames;
+            state.avr = state.av * (deltaMs / 120.0);
+            state.av = 0;
+         },
         'KeyW_up': () => {
             state.thrustersEngaged = false;
             state.tv = 0;
@@ -265,13 +283,15 @@ function ship({ id, name, x, y, xv, yv, a, av, shells }) {
         state,
         handleKeyEvents: (keyEvents) => {
             for (let i = 0; i < keyEvents.length; i++) {
-                let cmd = commandMatrix[keyEvents[i].meta()];
-                if (cmd) cmd();
+                let event = keyEvents[i];
+                //let cmd = commandMatrix[event.meta()];
+                let cmd = commandMatrix[event.metaCode];
+                if (cmd) cmd(event);
             }
         },
         render,
         step,
-        getRenderRoot,
+        getRootTemplate,
     }
 }
 

@@ -58,17 +58,20 @@ function shell({ id, name, x, y, xv, yv }) {
                     delta = delta < 1 ? 1 : deltaF;
                     let points = [];
                     let s = '';
-                    for(let i=0;i<delta;i++) {
-                        let newPoint = ({ x: state.x + state.xv * (parseFloat(i)/parseFloat(delta)), y: state.y + (state.yv * parseFloat(i)/parseFloat(delta)) });
+                    for (let i = 0; i < delta; i++) {
+                        let newPoint = ({
+                            x: state.x + state.xv * (parseFloat(i) / parseFloat(delta)),
+                            y: state.y + (state.yv * parseFloat(i) / parseFloat(delta))
+                        });
                         //console.log(i, newPoint, delta);
                         points.push(newPoint);
 
                     }
                     let pointIntersectionFound = false;
                     let contactPoint = null;
-                    for(let j=0;j<points.length;j++) {
+                    for (let j = 0; j < points.length; j++) {
                         let intersection = isPointInsidePolygon(points[j], asteroidVerticies);
-                        if(intersection) {
+                        if (intersection) {
                             pointIntersectionFound = true;
                             contactPoint = points[j];
                             break;
@@ -77,8 +80,8 @@ function shell({ id, name, x, y, xv, yv }) {
 
                     let results = pointIntersectionFound;
 
-                    if(pointIntersectionFound && contactPoint) {
-                        effected.shellStrike(contactPoint, { x: state.xv, y: state.yv} );
+                    if (pointIntersectionFound && contactPoint) {
+                        effected.shellStrike(contactPoint, { x: state.xv, y: state.yv });
                         state.enabled = false;
                     }
 
@@ -104,7 +107,7 @@ function shell({ id, name, x, y, xv, yv }) {
         }
     }
 
-    const getRenderRoot = (index) => {
+    const getRootTemplate = (index) => {
         const RenderRoot = () => {
             return (
                 <g id={`shell${index}`} style={{ 'display': 'none' }}>
@@ -150,7 +153,7 @@ function shell({ id, name, x, y, xv, yv }) {
         handleKeyEvents: (keyEvents) => { },
         render,
         step,
-        getRenderRoot,
+        getRootTemplate,
         effectOther
     }
 }

@@ -21,8 +21,9 @@ const settings = {
     },
     ship: {
         angularAcceleration: .3,
-        angularDelta: 1.9456,
-        thrust: .01
+        angularDelta: 2.3,
+        thrust: .015,
+        thrustPlumeRatio: .75
     },
     physics: {
       gravMinDistance: 50.0,
@@ -32,10 +33,12 @@ const settings = {
     shells: {
       maxShellCnt: 20,
       maxShellAge: 500,
-      velocity: 2.2,
+      velocity: 2.9,
     },
     drawLib: () => { console.log('GENERIC DRAWLIB CALLED')},
-    
+    global: {
+      averageFrameRate: 120.0
+    }
   };
   const libs = {
     getDrawLib: () => settings.drawLib
