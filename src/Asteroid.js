@@ -6,7 +6,7 @@ function asteroid({ id, name, x, y, xv, yv, a, av, size }, handleSplitAsteroid) 
     const state = { ...arguments[0], t: 0, tv: 0, physform: true };
     let asteroidContainer = null;
     let points = [];
-    let pntCnt = parseInt(Math.random()) * 8.0 + 5.0;
+    let pntCnt = parseInt(Math.random()) * 12.0 + 6.0;
     let wedgeArcSize = Math.PI * 2.0 / pntCnt;
     //console.log('WAS', wedgeArcSize);
     state.type = 'asteroid';
@@ -41,7 +41,7 @@ function asteroid({ id, name, x, y, xv, yv, a, av, size }, handleSplitAsteroid) 
         return vt;
     }
 
-    vticks = smooth(vticks, 10);
+    //vticks = smooth(vticks, 10);
     vticks.forEach((o) => {
         points.push({ x: parseInt(Math.sin(o.a) * o.l), y: parseInt(Math.cos(o.a) * o.l) });
     })

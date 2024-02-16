@@ -47,6 +47,8 @@ const Game = () => {
     const initialShipX = settings.star.xpos;
     const initialShipY = settings.star.ypos - 50.0;
 
+    let actorCnt = 0;
+
     let flagDebugger = false;
 
     let initialState = {
@@ -62,9 +64,7 @@ const Game = () => {
     let [game, setGameState] = useState(initialState);
 
     const addActor = (newActor) => {
-        let maxId = 0;
-        game.actors.forEach(o => { maxId = o.state.id > maxId ? o.state.id : maxId });
-        const nextId = maxId + 1;
+        const nextId = actorCnt++;
         //console.log(`NEW ID GENERATED ${nextId} for ${newActor.state.name}`);
         newActor.state.id = nextId;
         game.actors.push(newActor);
@@ -98,7 +98,7 @@ const Game = () => {
         if (!game.initialized) {
             //console.log('settings ', settings);
             for (let i = 0; i < settings.shells.maxShellCnt; i++) {
-                const newShell = new shell({ name: `shell${i + 1}`, index: i, preventGravity: true, effectedImune: true });
+                const newShell = new shell({ name: `shell${i + 1}`, index: i, preventGravity: false, effectedImune: true });
                 shells.push(newShell);
                 addActor(newShell);
             }
@@ -120,7 +120,7 @@ const Game = () => {
 
         //draw stars
         const density = 2.7;
-        const hcnt = displayWidth / (1.0 / density);
+        const hcnt = displayWidth * density;
         ctx = canvas.getContext('2d');
         for (let i = 0; i < hcnt; i++) {
             ctx.beginPath();

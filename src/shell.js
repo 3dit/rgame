@@ -1,6 +1,7 @@
 import { settings } from "./config";
 import { core } from "./core";
 import ReactDOMServer from 'react-dom/server';
+import { utils } from "./utils"
 
 function shell({ id, name, x, y, xv, yv }) {
     const state = { ...arguments[0], t: 0, physform: true };
@@ -31,28 +32,6 @@ function shell({ id, name, x, y, xv, yv }) {
                 //console.log('ast', effected);
                 let asteroidVerticies = effected.state.points;
                 if (asteroidVerticies) {
-
-                    function isPointInsidePolygon(point, polygon) {
-                        const x = point.x;
-                        const y = point.y;
-
-                        let isInside = false;
-
-                        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                            const xi = polygon[i].x + effected.state.x;
-                            const yi = polygon[i].y + effected.state.y;
-                            const xj = polygon[j].x + effected.state.x;
-                            const yj = polygon[j].y + effected.state.y;
-
-                            const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-
-                            if (intersect) {
-                                isInside = !isInside;
-                            }
-                        }
-
-                        return isInside;
-                    }
                     let deltaF = Math.sqrt(Math.pow(state.xv, 2) + Math.pow(state.yv, 2)) * 2.0;
                     let delta = parseInt(deltaF);
                     delta = delta < 1 ? 1 : deltaF;
@@ -70,8 +49,7 @@ function shell({ id, name, x, y, xv, yv }) {
                     let pointIntersectionFound = false;
                     let contactPoint = null;
                     for (let j = 0; j < points.length; j++) {
-                        let intersection = isPointInsidePolygon(points[j], asteroidVerticies);
-                        if (intersection) {
+                        if ( utils.isPointInsidePolygon(points[j], asteroidVerticies, effected.state) ) {
                             pointIntersectionFound = true;
                             contactPoint = points[j];
                             break;
